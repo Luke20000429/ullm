@@ -79,13 +79,13 @@ class GPUExecutor(ExecutorBase):
         num_gpu_blocks, num_cpu_blocks = (
             self.driver_worker.profile_num_available_blocks(
                 block_size=self.cache_config.block_size,
-                gpu_memory_utilization=self.cache_config.
-                gpu_memory_utilization,
+                gpu_memory_utilization=self.cache_config.gpu_memory_utilization,
                 cpu_swap_space=self.cache_config.swap_space_bytes,
                 cache_dtype=self.cache_config.cache_dtype,
             ))
 
         logger.info(f"# GPU blocks: {num_gpu_blocks}, "
+                    f"# block size: {self.cache_config.block_size}, "
                     f"# CPU blocks: {num_cpu_blocks}")
 
         check_block_size_valid(num_gpu_blocks, self.cache_config.block_size,

@@ -144,7 +144,7 @@ class LLMEngine:
             assert parallel_config.world_size == 1, (
                 "Ray is required if parallel_config.world_size > 1.")
             from vllm.executor.gpu_executor import GPUExecutor
-            executor_class = GPUExecutor
+            executor_class = GPUExecutor  # NOTE: GPUExecutor is the default.
 
         # Create the LLM engine.
         engine = cls(*engine_configs,
@@ -651,6 +651,7 @@ class LLMEngine:
     def _get_stats(self,
                    scheduler_outputs: Optional[SchedulerOutputs]) -> Stats:
         """Get Stats to be Logged to Prometheus."""
+        # NOTE: check the memory usage and the scheduler state.
         now = time.time()
 
         # KV Cache Usage in %.
@@ -671,6 +672,7 @@ class LLMEngine:
         num_waiting = len(self.scheduler.waiting)
 
         # Iteration stats if we have scheduler output.
+        # NOTE: compute the theoretical size of KV cache
         num_prompt_tokens = 0
         num_generation_tokens = 0
         time_to_first_tokens = []

@@ -219,6 +219,8 @@ class StatLogger:
                 f"Avg prompt throughput: {prompt_throughput:.1f} tokens/s, "
                 f"Avg generation throughput: "
                 f"{generation_throughput:.1f} tokens/s, "
+                f"Num of prompt tokens: {sum(self.num_prompt_tokens)}, "
+                f"Num of generation tokens: {sum(self.num_prompt_tokens)}, "
                 f"Running: {stats.num_running} reqs, "
                 f"Swapped: {stats.num_swapped} reqs, "
                 f"Pending: {stats.num_waiting} reqs, "

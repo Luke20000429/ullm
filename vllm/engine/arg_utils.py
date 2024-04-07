@@ -189,7 +189,7 @@ class EngineArgs:
                             type=int,
                             default=EngineArgs.block_size,
                             choices=[8, 16, 32, 128],
-                            help='token block size')
+                            help='token block size') # block is defined as a number of tokens
 
         parser.add_argument('--enable-prefix-caching',
                             action='store_true',
@@ -366,6 +366,7 @@ class EngineArgs:
             self.tokenizer_revision, self.max_model_len, self.quantization,
             self.enforce_eager, self.max_context_len_to_capture,
             self.max_logprobs)
+        # NOTE: The cache config is defined here
         cache_config = CacheConfig(self.block_size,
                                    self.gpu_memory_utilization,
                                    self.swap_space, self.kv_cache_dtype,

@@ -274,6 +274,9 @@ class XFormersImpl(AttentionImpl):
                 )
         else:
             # Decoding run.
+            # print("Decoding run")
+            # print query, key, value shape
+            # print("shape of q, k, v", query.shape, key.shape, value.shape)
             output = PagedAttention.forward_decode(
                 query,
                 key_cache,

@@ -8,7 +8,7 @@ import torch
 from vllm._C import ops
 from vllm.utils import STR_DTYPE_TO_TORCH_DTYPE, create_kv_caches_with_random
 
-NUM_BLOCKS = 1024
+NUM_BLOCKS = 4096
 PARTITION_SIZE = 512
 
 
@@ -40,6 +40,7 @@ def main(
                         dtype=dtype,
                         device=device)
     query.uniform_(-scale, scale)
+    print(f"query: {query.shape}")
 
     assert num_query_heads % num_kv_heads == 0
     alibi_slopes = None
@@ -54,14 +55,20 @@ def main(
 
     # Create the block tables.
     max_num_blocks_per_seq = (max_context_len + block_size - 1) // block_size
-    block_tables = []
-    for _ in range(num_seqs):
-        block_table = [
-            random.randint(0, NUM_BLOCKS - 1)
-            for _ in range(max_num_blocks_per_seq)
-        ]
-        block_tables.append(block_table)
-    block_tables = torch.tensor(block_tables, dtype=torch.int, device=device)
+    print(f"max_num_blocks_per_seq: {max_num_blocks_per_seq}")
+    # block_tables = []
+    # for _ in range(num_seqs):
+    #     block_table = [
+    #         random.randint(0, NUM_BLOCKS - 1)
+    #         for i in range(max_num_blocks_per_seq)
+    #     ]
+    #     block_tables.append(block_table)
+    #     # print(f"block_table: {block_table}")
+    block_tables = torch.arange(0, max_num_blocks_per_seq*num_seqs, dtype=torch.int, device=device)
+    # shuffle the block_tables
+    block_tables = block_tables[torch.randperm(block_tables.size(0))]
+    block_tables = block_tables.view(num_seqs, max_num_blocks_per_seq)
+    # block_tables = torch.tensor(block_tables, dtype=torch.int, device=device)
 
     # Create the KV cache.
     key_caches, value_caches = create_kv_caches_with_random(NUM_BLOCKS,
@@ -72,7 +79,8 @@ def main(
                                                             kv_cache_dtype,
                                                             dtype,
                                                             device=device)
-    key_cache, value_cache = key_caches[0], value_caches[0]
+    key_cache, value_cache = key_caches[0], value_caches[0] # NOTE: Only use the first layer
+    print(f"key_cache: {key_cache.shape}, value_cache: {value_cache.shape}")
 
     # Prepare for the paged attention kernel.
     output = torch.empty_like(query)
@@ -163,12 +171,12 @@ if __name__ == '__main__':
     parser.add_argument("--batch-size", type=int, default=8)
     parser.add_argument("--context-len", type=int, default=4096)
     parser.add_argument("--num-query-heads", type=int, default=64)
-    parser.add_argument("--num-kv-heads", type=int, default=8)
+    parser.add_argument("--num-kv-heads", type=int, default=64)
     parser.add_argument("--head-size",
                         type=int,
                         choices=[64, 80, 96, 112, 128, 256],
                         default=128)
-    parser.add_argument("--block-size", type=int, choices=[16, 32], default=16)
+    parser.add_argument("--block-size", type=int, choices=[8, 16, 32, 64, 128], default=16)
     parser.add_argument("--use-alibi", action="store_true")
     parser.add_argument("--dtype",
                         type=str,

@@ -630,7 +630,7 @@ class ModelRunner:
             graph_batch_size = input_tokens.shape[0]
             model_executable = self.graph_runners[graph_batch_size]
         else:
-            model_executable = self.model
+            model_executable = self.model            
         execute_model_kwargs = {
             "input_ids": input_tokens,
             "positions": input_positions,

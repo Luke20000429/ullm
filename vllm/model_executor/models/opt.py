@@ -97,6 +97,8 @@ class OPTAttention(nn.Module):
         kv_cache: torch.Tensor,
         attn_metadata: AttentionMetadata,
     ) -> torch.Tensor:
+        # NOTE: compute new k v
+        # size = (num_reqs (num_new_tokens), embed_dim)
         qkv, _ = self.qkv_proj(hidden_states)
         q, k, v = qkv.chunk(chunks=3, dim=-1)
         attn_output = self.attn(q, k, v, kv_cache, attn_metadata)

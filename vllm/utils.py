@@ -15,6 +15,10 @@ from typing import (Any, Awaitable, Callable, Generic, Hashable, List,
 import psutil
 import torch
 from packaging.version import Version, parse
+import cupy as cp
+# NOTE: use managed allocator
+USE_MANAGED_MEMORY = False
+cp.cuda.set_allocator(cp.cuda.malloc_managed)
 
 from vllm.logger import init_logger
 
@@ -303,12 +307,18 @@ def create_kv_caches_with_random(
 
     scale = head_size**-0.5
     x = 16 // torch.tensor([], dtype=torch_dtype).element_size()
+    # convert torch type to cp type
+    cp_type = cp.float16 if torch_dtype == torch.half else cp.float32
     key_cache_shape = (num_blocks, num_heads, head_size // x, block_size, x)
     key_caches = []
     for _ in range(num_layers):
-        key_cache = torch.empty(size=key_cache_shape,
-                                dtype=torch_dtype,
-                                device=device)
+        if not USE_MANAGED_MEMORY:
+            key_cache = torch.empty(size=key_cache_shape,
+                                    dtype=torch_dtype,
+                                    device=device)
+        else: 
+            key_cp = cp.ndarray(key_cache_shape, dtype=cp_type)
+            key_cache = torch.as_tensor(key_cp, dtype=torch_dtype, device=device)
         if cache_dtype == 'fp8_e5m2':
             _generate_random_fp8_e5m2(key_cache, -scale, scale)
         elif torch_dtype in [torch.half, torch.bfloat16, torch.float]:
@@ -321,9 +331,13 @@ def create_kv_caches_with_random(
     value_cache_shape = (num_blocks, num_heads, head_size, block_size)
     value_caches = []
     for _ in range(num_layers):
-        value_cache = torch.empty(size=value_cache_shape,
-                                  dtype=torch_dtype,
-                                  device=device)
+        if not USE_MANAGED_MEMORY:
+            value_cache = torch.empty(size=value_cache_shape,
+                                    dtype=torch_dtype,
+                                    device=device)
+        else:
+            value_cp = cp.ndarray(value_cache_shape, dtype=cp_type)
+            value_cache = torch.as_tensor(value_cp, dtype=torch_dtype, device=device)
         if cache_dtype == 'fp8_e5m2':
             _generate_random_fp8_e5m2(value_cache, -scale, scale)
         elif torch_dtype in [torch.half, torch.bfloat16, torch.float]:

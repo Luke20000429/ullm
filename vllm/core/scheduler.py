@@ -233,6 +233,7 @@ class Scheduler:
                 num_batched_tokens += num_prompt_tokens
                 if (num_batched_tokens >
                         self.scheduler_config.max_num_batched_tokens):
+                    print(f"num_batched_tokens {num_batched_tokens} > {self.scheduler_config.max_num_batched_tokens}")
                     break
 
                 # The total number of sequences in the RUNNING state should not
@@ -240,6 +241,7 @@ class Scheduler:
                 num_new_seqs = seq_group.get_max_num_running_seqs()
                 if (num_curr_seqs + num_new_seqs >
                         self.scheduler_config.max_num_seqs):
+                    print(f"num_curr_seqs {num_curr_seqs} + num_new_seqs {num_new_seqs} > {self.scheduler_config.max_num_seqs}")
                     break
 
                 if lora_int_id > 0:
@@ -365,6 +367,10 @@ class Scheduler:
         now = time.time()
 
         # Create input data structures.
+        # NOTE: stats block usage
+        active_token_ids = 0
+        allocate_blocks = 0
+        active_seqs = 0
         seq_group_metadata_list: List[SequenceGroupMetadata] = []
         for seq_group in scheduler_outputs.scheduled_seq_groups:
             seq_group.maybe_set_first_scheduled_time(now)
@@ -376,7 +382,13 @@ class Scheduler:
                 seq_id = seq.seq_id
                 seq_data[seq_id] = seq.data
                 block_tables[seq_id] = self.block_manager.get_block_table(seq)
-                self.block_manager.access_all_blocks_in_seq(seq, now)
+                self.block_manager.access_all_blocks_in_seq(seq, now) # update timestamp
+                
+            # NOTE: stats block usage
+            for seq in seq_group.get_seqs(status=SequenceStatus.RUNNING):
+                active_token_ids += seq.get_len()
+                allocate_blocks += len(block_tables[seq.seq_id])
+                active_seqs += 1
 
             seq_group_metadata = SequenceGroupMetadata(
                 request_id=seq_group.request_id,
@@ -396,6 +408,10 @@ class Scheduler:
                 if scheduler_outputs.prompt_run else None,
             )
             seq_group_metadata_list.append(seq_group_metadata)
+            
+        logger.info(
+            f"{active_seqs} seqs allocated {allocate_blocks} blocks x {self.cache_config.block_size} tokens for {active_token_ids} tokens, internal fragmentation {allocate_blocks * self.cache_config.block_size / active_token_ids}."
+        )
         return seq_group_metadata_list, scheduler_outputs
 
     def fork_seq(self, parent_seq: Sequence, child_seq: Sequence) -> None:

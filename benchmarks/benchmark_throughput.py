@@ -89,7 +89,11 @@ def run_vllm(
               enforce_eager=enforce_eager,
               kv_cache_dtype=kv_cache_dtype,
               device=device,
-              enable_prefix_caching=enable_prefix_caching)
+              enable_prefix_caching=enable_prefix_caching,
+              max_num_batched_tokens=102400,
+              max_num_seqs=5120,
+              disable_log_stats=False,
+              )
 
     # Add the requests to the engine.
     for prompt, _, output_len in requests:

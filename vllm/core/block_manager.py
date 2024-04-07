@@ -531,6 +531,7 @@ class BlockSpaceManager:
         self.block_tables.clear()
 
     def get_block_table(self, seq: Sequence) -> List[int]:
+        # NOTE: read block table of all running sequences from here and compute the fragmentation
         block_table = self.block_tables[seq.seq_id]
         return [block.block_number for block in block_table]
 
